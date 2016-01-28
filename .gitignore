@@ -1,0 +1,19 @@
+# Maven
+target/
+# IntelliJ
+.idea/
+*.iml
+.idea_modules/
+/project/boot/
+/project/plugins/project
+target/
+out/
+lib_managed/
+src_managed/
+test-output/
+# Eclipse
+bin/
+.classpath
+.project
+.settings/
+.metadata
