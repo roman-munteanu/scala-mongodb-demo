@@ -4,6 +4,7 @@ import com.mongodb.casbah.Imports._
 
 /**
   * Created by romunteanu on 1/28/2016.
+  * https://docs.mongodb.org/ecosystem/drivers/scala/
   */
 object CasbahDemo {
   def main(args: Array[String]) = {
