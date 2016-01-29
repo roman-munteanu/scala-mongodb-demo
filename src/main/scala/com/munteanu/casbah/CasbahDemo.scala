@@ -67,7 +67,8 @@ object CasbahDemo {
     // db.employees.createIndex({"username": 1});
     coll.createIndex("username")
 
-    // TODO create multiple index: department, isActive
+    // create multiple index
+    coll.createIndex(MongoDBObject("department" -> 1, "isActive" -> 1))
 
     // first one
     // db.employees.findOne()
@@ -122,13 +123,29 @@ object CasbahDemo {
 
     // TODO distinct
 
-    // TODO update
+    // simple update
+    // db.employees.update({"username": "lisa.hunter"}, {"$set":{"password": "1111", "isActive": false}});
+    val where = MongoDBObject("username" -> "lisa.hunter")
+    // This update will replace the existing one with the new document
+//    val update = MongoDBObject("password" -> "1111")
+    val update = $set("password" -> "1111", "isActive" -> false)
+    val updateResult = coll.update(where, update)
 
-    // TODO remove
 
-    // TODO insert with inner object
+    // multiple update
+    // db.employees.update({}, {"$set": {"password": "AABBCCAABBCC"}}, {"multi": true})
+    val multiUpdateResult = coll.update(MongoDBObject(), $set("password" -> "AABBCCAABBCC"), multi = true)
 
-    // TODO more complex queries with $gte $lte and inner properties
 
+    // upsert: update or insert
+    // db.employees.update({"username": "robert.fisher"}, {"$set": {"password": "ABCD"}}, {"upsert": true})
+    val upsertResult = coll.update(MongoDBObject("username" -> "robert.fisher"), $set("password" -> "ABCD"), upsert = true)
+
+
+    // remove
+    // db.employees.remove({"username": "robert.fisher"})
+    val removeResult = coll.remove(MongoDBObject("username" -> "robert.fisher"))
+
+    ()
   }
 }
