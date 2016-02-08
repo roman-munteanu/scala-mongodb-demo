@@ -12,8 +12,9 @@ case class Employee(
     password: String,
     department: String,
     isActive: Boolean,
-    assignments: Seq[Assignment]) {
-  override def toString = s"Employee{firstName=$firstName, lastName=$lastName, username=$username, password=$password, department=$department, isActive=$isActive, assignments=$assignments}"
+    assignments: Seq[Assignment],
+    tags: Seq[String]) {
+  override def toString = s"Employee{firstName=$firstName, lastName=$lastName, username=$username, password=$password, department=$department, isActive=$isActive, assignments=$assignments, tags=$tags}"
 }
 
 object Employee {
@@ -27,7 +28,8 @@ object Employee {
         bson.getAs[String]("password").get,
         bson.getAs[String]("department").get,
         bson.getAs[Boolean]("isActive").get,
-        bson.getAs[Seq[Assignment]]("assignments").toSeq.flatten
+        bson.getAs[Seq[Assignment]]("assignments").toSeq.flatten,
+        bson.getAs[Seq[String]]("tags").toSeq.flatten
       )
   }
 
@@ -40,7 +42,8 @@ object Employee {
         "password" -> employee.password,
         "department" -> employee.department,
         "isActive" -> employee.isActive,
-        "assignments" -> employee.assignments
+        "assignments" -> employee.assignments,
+        "tags" -> employee.tags
       )
   }
 
