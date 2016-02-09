@@ -10,19 +10,16 @@ import scala.concurrent.Future
   */
 package object reactivemongo {
 
-  def printFutureCollection(futureCollection: Future[List[BSONDocument]], label: String = ""): Unit = {
-    futureCollection.map(docs =>
-      docs.foreach(doc =>
-        println(s"$label: ${BSONDocument pretty doc}")
-      )
+  def printFutureCollection(futureCollection: Future[List[Any]], label: String = "DATA:"): Unit = {
+    println(label)
+    futureCollection.map(items =>
+      items.foreach {
+          case doc: BSONDocument =>
+            println(BSONDocument pretty doc)
+          case item =>
+            println(item.toString)
+        }
     )
   }
 
-  def printFutureDomainCollection(futureCollection: Future[List[Any]], label: String = ""): Unit = {
-    futureCollection.map(items =>
-      items.foreach(item =>
-        println(s"$label: $item")
-      )
-    )
-  }
 }

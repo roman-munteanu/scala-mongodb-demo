@@ -25,9 +25,9 @@ object Employee {
         bson.getAs[String]("firstName").get,
         bson.getAs[String]("lastName").get,
         bson.getAs[String]("username").get,
-        bson.getAs[String]("password").get,
+        bson.getAs[String]("password").getOrElse(""),
         bson.getAs[String]("department").get,
-        bson.getAs[Boolean]("isActive").get,
+        bson.getAs[Boolean]("isActive").getOrElse(true),
         bson.getAs[Seq[Assignment]]("assignments").toSeq.flatten,
         bson.getAs[Seq[String]]("tags").toSeq.flatten
       )

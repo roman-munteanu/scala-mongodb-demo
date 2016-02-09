@@ -29,7 +29,8 @@ object ReactiveMongoFetchDemo {
     val timeout = 5.seconds
 
     // drop collection
-//    collection.drop()
+    val futureDrop = collection.drop()
+    Await.result(futureDrop, timeout)
 
     // insert operation
     val alice = BSONDocument(
@@ -74,18 +75,16 @@ object ReactiveMongoFetchDemo {
     // find
     val futureFindResult: Future[List[BSONDocument]] =
       collection.find(BSONDocument()).cursor[BSONDocument]().collect[List]()
-//    printFutureCollection(futureFindResult, "Employee find")
+    printFutureCollection(futureFindResult, "Employee find:")
 
     // find one
     val where = BSONDocument("username" -> "daniel.fowler")
     val futureEmployee = collection.find(where).one[BSONDocument]
     Await.result(futureEmployee, timeout)
-//    futureEmployee.map(maybeEmployee =>
-//      maybeEmployee match {
-//        case Some(employee) => println(s"Find one: ${BSONDocument pretty employee}")
-//        case _ => println("Employee NotFound")
-//      }
-//    )
+    futureEmployee.map {
+        case Some(employee) => println(s"Find one: ${BSONDocument pretty employee}")
+        case _ => println("Employee NotFound")
+      }
 
     // sort and limit
     val limit = 2
@@ -94,7 +93,7 @@ object ReactiveMongoFetchDemo {
                                     .cursor[BSONDocument]()
                                     .collect[List](limit)
     Await.result(futureSortAndLimitResult, timeout)
-//    printFutureCollection(futureEmployees, "Employee sort and limit")
+    printFutureCollection(futureSortAndLimitResult, "Employees sort and limit:")
 
 
     // skip and limit
@@ -104,7 +103,7 @@ object ReactiveMongoFetchDemo {
                                                 .cursor[BSONDocument]()
                                                 .collect[List]()
     Await.result(futureSkipAndLimitResult, timeout)
-//    printFutureCollection(futureSkipAndLimitResult, "Employee skip and limit")
+    printFutureCollection(futureSkipAndLimitResult, "Employees skip and limit:")
 
 
     // TODO Iterate a collection with a lot of items with a cursor
@@ -112,14 +111,13 @@ object ReactiveMongoFetchDemo {
 
 
     // find using domain objects
-
     import com.munteanu.model._
     import com.munteanu.model.Employee._
 
     val futureFetchResult: Future[List[Employee]] =
       collection.find(BSONDocument()).cursor[Employee]().collect[List]()
     Await.result(futureFetchResult, timeout)
-    printFutureDomainCollection(futureFetchResult, "Find with domain objects")
+    printFutureCollection(futureFetchResult, "Find result with domain objects")
 
     ()
   }

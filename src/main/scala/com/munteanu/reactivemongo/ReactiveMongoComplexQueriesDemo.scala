@@ -1,11 +1,12 @@
 package com.munteanu.reactivemongo
 
 import com.munteanu.model.{Assignment, Employee}
+import org.joda.time.DateTime
 import org.joda.time.format.{ISODateTimeFormat, DateTimeFormatter}
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.{MultiBulkWriteResult, WriteResult}
 import reactivemongo.api.{DefaultDB, MongoConnection, MongoDriver}
-import reactivemongo.bson.{BSONString, BSONDocument}
+import reactivemongo.bson.{BSONDateTime, BSONString, BSONDocument}
 
 import scala.concurrent.{Future, Await}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -78,7 +79,8 @@ object ReactiveMongoComplexQueriesDemo {
       List("Agile")
     )
 
-    val bulkInsertResult: Future[MultiBulkWriteResult] = collection.bulkInsert(ordered = false)(sophie, martin, harry, sam)
+    val bulkInsertResult: Future[MultiBulkWriteResult] =
+      collection.bulkInsert(ordered = false)(sophie, martin, harry, sam)
     Await.result(bulkInsertResult, 10.seconds)
 
     // an example of grouping all active employees by technologies
@@ -113,8 +115,10 @@ object ReactiveMongoComplexQueriesDemo {
 
 
     // filter assignments by a date range
+    // unwind phase should go first
     /*
     db.assignments.aggregate([
+      {"$unwind": "$assignments"},
       {"$match": {
           "assignments.dateFrom": {"$lte": ISODate("2013-12-31T00:00:00.000Z")},
           "assignments.dateTo": {"$gte": ISODate("2013-01-01T00:00:00.000Z")},
@@ -122,14 +126,13 @@ object ReactiveMongoComplexQueriesDemo {
           "isActive": true
         }
       },
-      {"$unwind": "$assignments"},
       {"$group": {
           "_id": {
             "username": "$username",
-            "password": "$password",
             "firstName": "$firstName",
             "lastName": "$lastName",
-            "department": "$department"
+            "department": "$department",
+            "tags": "$tags",
           },
           "assignments": {"$addToSet": "$assignments"}
         }
@@ -137,19 +140,26 @@ object ReactiveMongoComplexQueriesDemo {
       {"$project": {
           "_id": 0,
           "username": "$_id.username",
-          "password": "$_id.password",
           "firstName": "$_id.firstName",
           "lastName": "$_id.lastName",
           "department": "$_id.department",
+          "tags": "$_id.tags",
           "assignments": 1
         }
       }
     ]).pretty();
     */
 
+    val filterAssignmentsResult = filterAssignments(collection, date2013JAN01, date2013DEC31)
+    Await.result(filterAssignmentsResult, timeout)
+    printFutureCollection(filterAssignmentsResult)
+
     ()
   }
 
+  /**
+    * Groups by technologies
+    */
   def groupByTechnologies(collection: BSONCollection): Future[List[BSONDocument]] = {
     import collection.BatchCommands.AggregationFramework.{Ascending, Group, Match, Project, Sort, Push, Unwind}
 
@@ -166,7 +176,46 @@ object ReactiveMongoComplexQueriesDemo {
     collection.aggregate(phaseMatch, List(phaseUnwind, phaseGroup, phaseProject, phaseSort)).map(_.documents)
   }
 
-  def filterAssignments(collection: BSONCollection): Future[List[Employee]] = {
-    Future(Nil)
+  /**
+    * Filters assignments by a date range
+    */
+  def filterAssignments(collection: BSONCollection, startDate: DateTime, endDate: DateTime): Future[List[Employee]] = {
+    import collection.BatchCommands.AggregationFramework.{AddToSet, Ascending, Group, Match, Project, Sort, Push, Unwind}
+
+    val phaseUnwind = Unwind("assignments")
+
+    val phaseMatch = Match(
+      BSONDocument(
+        "assignments.dateFrom" -> BSONDocument("$lte" -> BSONDateTime(endDate.getMillis)),
+        "assignments.dateTo"   -> BSONDocument("$gte" -> BSONDateTime(startDate.getMillis)),
+        "tags" -> "Scala",
+        "isActive" -> true
+      )
+    )
+
+    val phaseGroup = Group(
+      BSONDocument(
+        "username"   -> "$username",
+        "firstName"  -> "$firstName",
+        "lastName"   -> "$lastName",
+        "department" -> "$department",
+        "tags" -> "$tags"
+      )
+    )("assignments" -> AddToSet("assignments"))
+
+
+    val phaseProject = Project(
+      BSONDocument(
+        "_id" -> 0,
+        "username" -> "$_id.username",
+        "firstName" -> "$_id.firstName",
+        "lastName" -> "$_id.lastName",
+        "department" -> "$_id.department",
+        "tags" -> "$_id.tags",
+        "assignments" -> 1
+      )
+    )
+
+    collection.aggregate(phaseUnwind, List(phaseMatch, phaseGroup, phaseProject)).map(_.result[Employee])
   }
 }
