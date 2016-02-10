@@ -4,9 +4,9 @@ import com.munteanu.model.{Assignment, Employee}
 import org.joda.time.DateTime
 import org.joda.time.format.{ISODateTimeFormat, DateTimeFormatter}
 import reactivemongo.api.collections.bson.BSONCollection
-import reactivemongo.api.commands.{MultiBulkWriteResult, WriteResult}
-import reactivemongo.api.{DefaultDB, MongoConnection, MongoDriver}
-import reactivemongo.bson.{BSONDateTime, BSONString, BSONDocument}
+import reactivemongo.api.commands.{Command, MultiBulkWriteResult, WriteResult}
+import reactivemongo.api.{BSONSerializationPack, DefaultDB, MongoConnection, MongoDriver}
+import reactivemongo.bson.{BSONArray, BSONDateTime, BSONString, BSONDocument}
 
 import scala.concurrent.{Future, Await}
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -153,6 +153,49 @@ object ReactiveMongoComplexQueriesDemo {
     val filterAssignmentsResult = filterAssignments(collection, date2013JAN01, date2013DEC31)
     Await.result(filterAssignmentsResult, timeout)
     printFutureCollection(filterAssignmentsResult)
+
+    //
+    // RawCommand usage example
+    //
+    // Count the amount of people in each department
+    /*
+    var command = {
+      "aggregate": "assignments",
+      "pipeline": [
+        { "$match": { "isActive": true } },
+        { "$group": { "_id": "$department", "total_people": { "$sum": 1 } } },
+        { "$sort": { "total_people": -1 } }
+      ]
+    };
+
+    db.runCommand(command)
+    */
+
+    val commandDoc =
+      BSONDocument(
+        "aggregate" -> "assignments",
+        "pipeline" -> BSONArray(
+          BSONDocument("$match" -> BSONDocument("isActive" -> true)),
+          BSONDocument(
+            "$group" -> BSONDocument(
+              "_id" -> "$department",
+              "total_people" -> BSONDocument("$sum" -> 1))),
+          BSONDocument("$sort" -> BSONDocument("total_people" -> -1))
+        )
+      )
+
+    val runner = Command.run(BSONSerializationPack)
+
+    // we get a Future
+    val futureCommandResult: Future[BSONDocument] =
+      runner.apply(db, runner.rawCommand(commandDoc)).one[BSONDocument]
+
+    // result is a BSONDocument
+    futureCommandResult.map { result =>
+      println("RawCommand aggregation result:")
+      println(BSONDocument pretty result)
+    }
+
 
     ()
   }
