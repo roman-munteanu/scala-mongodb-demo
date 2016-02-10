@@ -1,5 +1,6 @@
 package com.munteanu.reactivemongo
 
+import com.munteanu.model.Employee
 import reactivemongo.api._
 import reactivemongo.api.collections.bson.BSONCollection
 import reactivemongo.api.commands.{WriteResult, MultiBulkWriteResult}
@@ -22,6 +23,9 @@ object ReactiveMongoCRUDDemo {
 
     val timeout = 5.seconds
 
+    val futureDrop = collection.drop()
+    Await.result(futureDrop, timeout)
+
     val alice = BSONDocument(
       "firstName" -> "Alice",
       "lastName" -> "Parker",
@@ -34,8 +38,10 @@ object ReactiveMongoCRUDDemo {
     val insertResult: Future[WriteResult] = collection.insert(alice)
     Await.result(insertResult, timeout)
 
+    //
     // bulk insert
     // db.employees_crud.insert([{...}, {...}])
+    //
     val bulkInsertResult: Future[MultiBulkWriteResult] = collection.bulkInsert(ordered = false)(
 //      BSONDocument(
 //        "firstName" -> "Alice",
@@ -72,15 +78,19 @@ object ReactiveMongoCRUDDemo {
     )
     Await.result(bulkInsertResult, 10.seconds)
 
-
+    //
     // multiple update
+    // db.employees_crud.update({"isActive": true}, {"$set": {"department": "Testing"}}, {"multi": true})
+    //
     val futureMultipleUpdate =
       collection.update(selector = BSONDocument("isActive" -> true), update = BSONDocument("$set" -> BSONDocument("department" -> "Testing")), multi = true)
     Await.result(futureMultipleUpdate, timeout)
-    futureMultipleUpdate.map(lastError => println("Multiple update operation succeeded: " + lastError.ok))
+    futureMultipleUpdate.map(updateWriteResult => println("Multiple update operation succeeded: " + updateWriteResult.ok))
 
-
+    //
     // update or insert
+    // db.employees_crud.update({"username": "helen.smith"}, {"$set": {"username": "helen.smith", "department": "HR", "isActive": true}}, {"upsert": true})
+    //
     val update = BSONDocument("$set" ->
       BSONDocument(
         "username" -> "helen.smith",
@@ -90,16 +100,37 @@ object ReactiveMongoCRUDDemo {
     )
     val futureUpsert = collection.update(BSONDocument("username" -> "helen.smith"), update, upsert = true)
     Await.result(futureUpsert, timeout)
-    futureUpsert.map(lastError => println("Upsert operation succeeded: " + lastError.ok))
+    futureUpsert.map(updateWriteResult => println("Upsert operation succeeded: " + updateWriteResult.ok))
 
-
+    //
     // remove
+    // db.employees_crud.remove({"username": "alice.parker"})
+    //
     val futureRemove = collection.remove(BSONDocument("username" -> "alice.parker"))
     Await.result(futureRemove, timeout)
-    futureRemove.map(lastError => println("Remove operation succeeded: " + lastError.ok))
+    futureRemove.map(writeResult => println("Remove operation succeeded: " + writeResult.ok))
 
-    // TODO CRUD operations using domain objects
+    //
+    // Insert and update operations using domain objects
+    //
+    val martin = Employee("Martin", "Ford", "martin.ford", "1234abcd", "Project Management", false, Nil, List("Scala"))
 
+    // insert
+    val futureInsertDomain = collection.insert(martin)
+    Await.result(futureInsertDomain, timeout)
+
+    // update
+    val futureMartin = collection.find(BSONDocument("username" -> "martin.ford")).one[Employee]
+    Await.result(futureMartin, timeout)
+
+    futureMartin.map {
+      case Some(ford) =>
+        println(ford.toString)
+        collection.update(ford, BSONDocument("$set" -> BSONDocument("department" -> "Development", "isActive" -> true)))
+          .map(updateWriteResult => println("Update domain operation succeeded: " + updateWriteResult.ok))
+      case _ =>
+        println("Martin was not found in the database :(")
+    }
 
     ()
   }

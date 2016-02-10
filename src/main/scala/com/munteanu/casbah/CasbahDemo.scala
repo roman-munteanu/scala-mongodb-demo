@@ -1,6 +1,7 @@
 package com.munteanu.casbah
 
 import com.mongodb.casbah.Imports._
+import com.mongodb.casbah.MongoDB
 
 /**
   * Created by romunteanu on 1/28/2016.
@@ -11,10 +12,10 @@ object CasbahDemo {
 
     val mongoClient = MongoClient("localhost", 27017)
 
-    val db = mongoClient("casbah")
+    val db: MongoDB = mongoClient("casbah")
     println(db.collectionNames)
 
-    val coll = db("employees")
+    val coll: MongoCollection = db("employees")
 
     coll.dropCollection
 
@@ -122,7 +123,6 @@ object CasbahDemo {
     coll.find(filter) foreach (employee =>
       println(employee("firstName") + " | " + employee("lastName") + " | " + employee("username") + " | " + employee("department")))
 
-    // TODO distinct
 
     // simple update
     // db.employees.update({"username": "lisa.hunter"}, {"$set":{"password": "1111", "isActive": false}});
